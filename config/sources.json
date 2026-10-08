@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Example Rwanda Health Source",
+    "url": "https://example.org/rwanda/health",
+    "sector": "health",
+    "type": "html",
+    "selectors": {
+      "items": "article",
+      "title": "h2",
+      "description": "p",
+      "link": "a"
+    }
+  },
+  {
+    "name": "Example Rwanda Agriculture Source",
+    "url": "https://example.org/rwanda/agriculture",
+    "sector": "agriculture",
+    "type": "html",
+    "selectors": {
+      "items": "article",
+      "title": "h2",
+      "description": "p",
+      "link": "a"
+    }
+  }
+]

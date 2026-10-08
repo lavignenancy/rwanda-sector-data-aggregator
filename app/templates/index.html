@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rwanda Sector Data Aggregator</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}">
+</head>
+<body>
+  <main class="container">
+    <header>
+      <p class="eyebrow">DATA PLATFORM</p>
+      <h1>Rwanda Sector Data Aggregator</h1>
+      <p class="intro">
+        Continuously collected public information, organized by sector and linked back to its source.
+      </p>
+    </header>
+
+    <section class="stats">
+      <div class="card"><span>Total records</span><strong>{{ total }}</strong></div>
+      <div class="card"><span>Tracked sectors</span><strong>{{ sectors|length }}</strong></div>
+      <div class="card"><span>Updates</span><strong>Automatic</strong></div>
+    </section>
+
+    <section>
+      <div class="toolbar">
+        <label for="sector">Sector</label>
+        <select id="sector" onchange="filterSector()">
+          <option value="">All sectors</option>
+          {% for sector in sectors %}
+          <option value="{{ sector }}">{{ sector|title }}</option>
+          {% endfor %}
+        </select>
+        <button onclick="triggerScrape()">Run update now</button>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div class="records">
+        {% for record in records %}
+        <article class="record" data-sector="{{ record.sector }}">
+          <div class="record-top">
+            <span class="tag">{{ record.sector }}</span>
+            <small>Updated {{ record.updated_at.strftime("%Y-%m-%d %H:%M") }}</small>
+          </div>
+          <h2>{{ record.title }}</h2>
+          <p>{{ record.description }}</p>
+          <div class="source">
+            <span>{{ record.source_name }}</span>
+            {% if record.item_url %}
+            <a href="{{ record.item_url }}" target="_blank" rel="noopener">View source ↗</a>
+            {% else %}
+            <a href="{{ record.source_url }}" target="_blank" rel="noopener">View source ↗</a>
+            {% endif %}
+          </div>
+        </article>
+        {% else %}
+        <p>No records yet. Run the seed command or configure a source.</p>
+        {% endfor %}
+      </div>
+    </section>
+  </main>
+
+<script>
+function filterSector() {
+  const selected = document.getElementById("sector").value;
+  document.querySelectorAll(".record").forEach(record => {
+    record.style.display = (!selected || record.dataset.sector === selected) ? "" : "none";
+  });
+}
+
+async function triggerScrape() {
+  const status = document.getElementById("status");
+  status.textContent = "Running update...";
+  try {
+    const response = await fetch("/api/scrape", { method: "POST" });
+    const data = await response.json();
+    const saved = data.reduce((sum, item) => sum + item.records_saved, 0);
+    status.textContent = `Update complete. ${saved} new/updated records saved. Refresh to see changes.`;
+  } catch (error) {
+    status.textContent = "Update failed. Check the server logs.";
+  }
+}
+</script>
+</body>
+</html>
