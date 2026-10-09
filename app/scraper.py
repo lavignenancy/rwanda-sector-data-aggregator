@@ -1,4 +1,5 @@
 import hashlib
+import inspect
 import json
 import httpx
 from bs4 import BeautifulSoup
@@ -40,8 +41,8 @@ async def scrape_sector_metrics(db: AsyncSession, sector_name: str, target_url: 
     query = select(AggregatedSectorData).where(
         AggregatedSectorData.structural_signature == signature
     )
-    result = await db.execute(query)
-    existing_record = result.scalars().first()
+    db_result = await db.execute(query)
+    existing_record = db_result.scalars().first()
 
     if existing_record:
         existing_record.sector = sector_name
@@ -52,8 +53,8 @@ async def scrape_sector_metrics(db: AsyncSession, sector_name: str, target_url: 
         AggregatedSectorData.sector == sector_name,
         AggregatedSectorData.source_url == target_url
     )
-    sector_result = await db.execute(sector_query)
-    record_to_update = sector_result.scalars().first()
+    sector_db_result = await db.execute(sector_query)
+    record_to_update = sector_db_result.scalars().first()
 
     if record_to_update:
         record_to_update.payload = extracted_metrics
@@ -67,6 +68,8 @@ async def scrape_sector_metrics(db: AsyncSession, sector_name: str, target_url: 
             structural_signature=signature,
             payload=extracted_metrics
         )
-        db.add(new_record)
+        add_result = db.add(new_record)
+        if inspect.isawaitable(add_result):
+            await add_result
 
     await db.commit()

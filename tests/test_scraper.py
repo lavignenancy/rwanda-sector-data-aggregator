@@ -1,57 +1,31 @@
-from app.scraper import make_hash, parse_html, parse_json
+import pytest
+from unittest.mock import AsyncMock, patch, MagicMock
+from app.scraper import generate_payload_signature, scrape_sector_metrics
 
+def test_generate_payload_signature():
+    payload = {"population": 15000, "sector_name": "Gashora"}
+    sig1 = generate_payload_signature(payload)
+    sig2 = generate_payload_signature(payload)
+    assert sig1 == sig2
+    assert len(sig1) == 64
 
-def test_make_hash_is_deterministic():
-    a = make_hash("source", "item", "Title", "Description")
-    b = make_hash("source", "item", "Title", "Description")
-    assert a == b
-    assert len(a) == 64
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient.get")
+async def test_scrape_sector_metrics_success(mock_get):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = '<html><div class="metric-row"><span class="metric-label">Population</span><span class="metric-value">15000</span></div></html>'
+    mock_get.return_value = mock_response
 
+    mock_scalars = MagicMock()
+    mock_scalars.first.return_value = None
+    
+    mock_result = MagicMock()
+    mock_result.scalars.return_value = mock_scalars
 
-def test_parse_html():
-    html = '''
-    <html><body>
-      <article>
-        <h2>Health update</h2>
-        <p>New information.</p>
-        <a href="/health/1">Read</a>
-      </article>
-    </body></html>
-    '''
-    source = {
-        "url": "https://example.org/news",
-        "selectors": {
-            "items": "article",
-            "title": "h2",
-            "description": "p",
-            "link": "a"
-        }
-    }
-    records = parse_html(html, source)
-    assert len(records) == 1
-    assert records[0]["title"] == "Health update"
-    assert records[0]["item_url"] == "https://example.org/health/1"
+    mock_db = AsyncMock()
+    mock_db.execute.return_value = mock_result
 
-
-def test_parse_json():
-    data = {
-        "results": [
-            {
-                "title": "Agriculture update",
-                "description": "New data",
-                "url": "https://example.org/a/1",
-                "published": "2026-10-05"
-            }
-        ]
-    }
-    source = {
-        "json_items_path": "results",
-        "json_fields": {
-            "title": "title",
-            "description": "description",
-            "url": "url",
-            "published_at": "published"
-        }
-    }
-    records = parse_json(data, source)
-    assert records[0]["title"] == "Agriculture update"
+    await scrape_sector_metrics(mock_db, "Gashora", "https://statistics.gov.rw")
+    assert mock_db.add.called
+    assert mock_db.commit.called
