@@ -37,6 +37,7 @@ async function fetchWithRetry(
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const fixtureIndex = args.indexOf("--fixture");
+  const shouldIngest = args.includes("--ingest");
 
   let html: string;
   let sourceUrl: string;
@@ -44,17 +45,17 @@ async function main(): Promise<void> {
   if (fixtureIndex !== -1) {
     const file = args[fixtureIndex + 1];
 
-    if (!file) {
-      throw new Error("Provide a fixture file path");
+    if (!file || file.startsWith("--")) {
+      throw new Error("Provide a fixture filepath");
     }
 
     html = await readFile(file, "utf8");
     sourceUrl = "https://example.org/demo";
   } else {
-    const url = args[0];
+    const url = args.find((arg) => !arg.startsWith("--"));
 
-    if (!url || !/^https?:\/\//i.test(url)) {
-      throw new Error("Provide a valid public source URL");
+    if (!url) {
+      throw new Error("Provide a public HTTPS source URL");
     }
 
     const parsed = new URL(url);
@@ -75,18 +76,41 @@ async function main(): Promise<void> {
   const processed = extracted.map(processRecord);
   const unique = deduplicate(processed);
 
-  console.log(
-    JSON.stringify(
-      {
-        source: sourceUrl,
-        extracted: extracted.length,
-        duplicates: processed.length - unique.length,
-        records: unique
+  const output: Record<string, unknown> = {
+    source: sourceUrl,
+    extracted: extracted.length,
+    duplicates: processed.length - unique.length,
+    records: unique
+  };
+
+  if (shouldIngest) {
+    const apiUrl = process.env.API_URL ?? "http://127.0.0.1:8000";
+    const apiKey = process.env.INGESTION_API_KEY;
+
+    if (!apiKey) {
+      throw new Error("INGESTION_API_KEY is required");
+    }
+
+    const response = await fetch(`${apiUrl}/records/ingest`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": apiKey
       },
-      null,
-      2
-    )
-  );
+      body: JSON.stringify({ records: unique }),
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Ingestion failed: ${response.status} ${await response.text()}`
+      );
+    }
+
+    output.ingestion = await response.json();
+  }
+
+  console.log(JSON.stringify(output, null, 2));
 }
 
 main().catch((error: unknown) => {
