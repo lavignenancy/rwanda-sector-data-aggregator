@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { extractRecords } from "./scraper.js";
 import { processRecord, deduplicate } from "./processor.js";
+import { fetchRenderedHtml } from "./playwright_scraper.js";
 
 async function fetchWithRetry(
   url: string,
@@ -38,6 +39,7 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const fixtureIndex = args.indexOf("--fixture");
   const shouldIngest = args.includes("--ingest");
+  const usePlaywright = args.includes("--playwright");
 
   let html: string;
   let sourceUrl: string;
@@ -69,7 +71,10 @@ async function main(): Promise<void> {
     }
 
     sourceUrl = parsed.toString();
-    html = await fetchWithRetry(sourceUrl);
+
+    html = usePlaywright
+      ? await fetchRenderedHtml(sourceUrl)
+      : await fetchWithRetry(sourceUrl);
   }
 
   const extracted = extractRecords(html, sourceUrl);
@@ -78,6 +83,11 @@ async function main(): Promise<void> {
 
   const output: Record<string, unknown> = {
     source: sourceUrl,
+    renderer: fixtureIndex !== -1
+      ? "fixture"
+      : usePlaywright
+        ? "playwright"
+        : "cheerio",
     extracted: extracted.length,
     duplicates: processed.length - unique.length,
     records: unique

@@ -10,7 +10,6 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db
 from app.main import app
 
-
 API_KEY = "test-ingestion-key"
 SOURCE_URL = "https://example.org/demo"
 
