@@ -16,10 +16,7 @@ def find_by_id(db: Session, record_id: int):
 
 def list_records(db: Session, limit: int, offset: int):
     return db.scalars(
-        select(SectorRecord)
-        .order_by(SectorRecord.id)
-        .offset(offset)
-        .limit(limit)
+        select(SectorRecord).order_by(SectorRecord.id).offset(offset).limit(limit)
     ).all()
 
 

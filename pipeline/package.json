@@ -9,7 +9,8 @@
     "test": "jest --runInBand"
   },
   "dependencies": {
-    "cheerio": "^1.0.0"
+    "cheerio": "^1.0.0",
+    "playwright": "^1.64.1"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
