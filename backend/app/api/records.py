@@ -20,9 +20,7 @@ router = APIRouter(prefix="/records", tags=["Records"])
 def verify_api_key(x_api_key: str | None = Header(default=None)):
     expected = os.getenv("INGESTION_API_KEY")
 
-    if not expected or not x_api_key or not secrets.compare_digest(
-        expected, x_api_key
-    ):
+    if not expected or not x_api_key or not secrets.compare_digest(expected, x_api_key):
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 

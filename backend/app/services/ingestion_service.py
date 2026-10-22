@@ -41,10 +41,12 @@ def ingest(db: Session, payload: IngestionRequest) -> IngestionResult:
 
             source_url = str(item.sourceUrl)
 
-            identity_key = hash_values([
-                source_url,
-                normalize(item.name),
-            ])
+            identity_key = hash_values(
+                [
+                    source_url,
+                    normalize(item.name),
+                ]
+            )
 
             existing = repository.find_by_identity(db, identity_key)
 
